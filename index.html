@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Whistle a tune and see it as a 3D spectrogram. Based on Chrome Music Lab Spectrogram." />
+    <meta name="theme-color" content="#141414" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Spectrogram</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="spectrogram"></canvas>
+    <canvas id="legend" aria-hidden="true"></canvas>
+
+    <section id="intro" class="intro">
+      <div class="intro__card">
+        <h1>Spectrogram</h1>
+        <p class="intro__lead">Whistle or hum a tune and watch it scroll by. Pause to take a screenshot.</p>
+        <button id="start" class="button button--primary" type="button">
+          <svg class="button__icon" viewBox="188 163 145 196" aria-hidden="true"><path d="M260.5,286.2c17.1,0,30.7-13.8,30.7-30.8l0.1-61.6c0-17.1-13.8-30.8-30.8-30.8c-17.1,0-30.8,13.8-30.8,30.8v61.6C229.7,272.4,243.4,286.2,260.5,286.2z M314.9,255.4c0,30.8-26.1,52.4-54.4,52.4s-54.4-21.6-54.4-52.4h-17.5c0,35,27.9,64,61.6,69v33.7h20.5v-33.7c33.7-4.9,61.6-33.9,61.6-69H314.9z"/></svg>
+          Start microphone
+        </button>
+        <p id="error" class="intro__error" role="alert" hidden></p>
+        <p class="intro__privacy">Only analyses live sound. Nothing is recorded or saved.</p>
+      </div>
+    </section>
+
+    <div class="bottom">
+      <div id="controls" class="controls" hidden>
+      <button id="pause" class="button button--primary button--pause" type="button" aria-pressed="false">Pause</button>
+
+      <fieldset class="segmented" aria-label="Window length">
+        <label><input type="radio" name="window" value="5" /><span>5 s</span></label>
+        <label><input type="radio" name="window" value="10" /><span>10 s</span></label>
+        <label><input type="radio" name="window" value="15" checked /><span>15 s</span></label>
+        <label><input type="radio" name="window" value="20" /><span>20 s</span></label>
+      </fieldset>
+
+      <button id="save" class="button" type="button">Save image</button>
+    </div>
+
+    <footer class="credit">
+      Based on <a href="https://github.com/googlecreativelab/chrome-music-lab/tree/master/spectrogram" target="_blank" rel="noopener">Chrome Music Lab Spectrogram</a> by Google Creative Lab · Apache 2.0
+    </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "spectogram",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mic-only 3D spectrogram for Playful Technology (Howest), based on Chrome Music Lab Spectrogram",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:lan": "vite --host --mode lan",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "vite": "^8.3.4"
+  }
+}
