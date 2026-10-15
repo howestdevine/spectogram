@@ -34,9 +34,7 @@ void main()
     vec4 sample = texture2D(frequencyData, vec2(x, y));
     float k = sample.a;
 
-    // gl_FragColor = vec4(k, k, k, 1.0);
-    // Fade out the mesh close to the edges
-    float fade = pow(cos((1.0 - texCoord.y) * 0.5 * 3.1415926535), 0.5);
-    k *= fade;
+    // Modified by Howest, 2026: the fade-out towards the oldest edge is
+    // removed so the whole window is visible.
     gl_FragColor = backgroundColor + vec4(k * color, 1.0);
 }

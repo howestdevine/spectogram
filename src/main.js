@@ -70,6 +70,8 @@ function startMic() {
       started = true;
       intro.hidden = true;
       controls.hidden = false;
+      // The controls bar takes room the mesh has to clear.
+      spec3D.onResize_();
       setPaused(false);
       spec3D.startRender();
     })
@@ -78,6 +80,7 @@ function startMic() {
       started = false;
       intro.hidden = false;
       controls.hidden = true;
+      spec3D.onResize_();
       showError(micErrorMessage(err));
     })
     .finally(() => {
@@ -146,7 +149,7 @@ function saveImage() {
 
 function init() {
   try {
-    spec3D.attached($('#spectrogram'), $('#legend'), FFT_SIZE / 2);
+    spec3D.attached($('#spectrogram'), $('#legend'), $('.bottom'), FFT_SIZE / 2);
   } catch (err) {
     console.error(err);
     startButton.hidden = true;

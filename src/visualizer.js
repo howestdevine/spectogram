@@ -19,7 +19,8 @@ Modified by Howest, 2026:
   written at a fixed rate while rendering runs every animation frame.
 - clearTexture() to start a fresh window.
 - Shaders come in as strings; preserveDrawingBuffer for "Save image".
-- The camera distance grows on narrow (portrait) screens so the mesh fits.
+- The projected mesh is zoomed and panned (in 2D, after projection) to fill
+  the free screen area, newest edge on the right.
 *********************************************************/
 
 import Matrix4x4 from './matrix4x4.js';
@@ -32,10 +33,16 @@ const model = new Matrix4x4();
 const view = new Matrix4x4();
 const projection = new Matrix4x4();
 
-// Below this aspect ratio (width / height) the camera backs off so the mesh
-// is not cut off at the sides. Landscape and desktop keep the original view.
-const MIN_FULL_ASPECT = 1.2;
-const VIEW_DISTANCE = 9.0;
+// How much the framing may stretch one axis more than the other.
+const MAX_STRETCH = 3;
+
+// Projects a model-space point with a row-vector matrix (Matrix4x4 layout)
+// and returns normalized device coordinates, or null behind the camera.
+function projectNDC(e, x, y, z) {
+  const clip = [0, 1, 2, 3].map((j) => x * e[j] + y * e[4 + j] + z * e[8 + j] + e[12 + j]);
+  if (clip[3] <= 0) return null;
+  return { x: clip[0] / clip[3], y: clip[1] / clip[3] };
+}
 
 export default class AnalyserView {
   constructor(canvas) {
@@ -54,6 +61,9 @@ export default class AnalyserView {
 
     // Camera (the original CameraController without its disabled mouse code).
     this.camera = { xRot: -180, yRot: 270, zRot: 90, xT: 0, yT: -2, zT: -2 };
+
+    // Free screen area for the mesh, as fractions of the canvas.
+    this.frame = { left: 0, right: 0, top: 0, bottom: 0 };
 
     this.canvas = canvas;
     this.initGL();
@@ -189,15 +199,26 @@ export default class AnalyserView {
     this.yoffset = (this.yoffset + 1) % this.TEXTURE_HEIGHT;
   }
 
+  setFrame(frame) {
+    this.frame = frame;
+  }
+
+  // Model-space z of the oldest and newest edge of the drawn mesh.
+  edgeZ() {
+    const size = this.sonogram3DGeometrySize;
+    const h = this.sonogram3DHeight;
+    // The last rows of the mesh are not drawn (see sonogram3DNumIndices).
+    return { oldest: -size / 2, newest: size * ((h - 4) - h / 2) / h };
+  }
+
   worldViewProjection() {
     const camera = this.camera;
 
     // Set up the model, view and projection matrices
-    const aspect = this.canvas.width / this.canvas.height;
     projection.loadIdentity();
-    projection.perspective(55, aspect, 1, 100);
+    projection.perspective(55, this.canvas.width / this.canvas.height, 1, 100);
     view.loadIdentity();
-    view.translate(0, 0, -VIEW_DISTANCE * Math.max(1, MIN_FULL_ASPECT / aspect));
+    view.translate(0, 0, -9.0);
 
     // Add in camera rotation
     model.loadIdentity();
@@ -211,7 +232,48 @@ export default class AnalyserView {
     mvp.multiply(model);
     mvp.multiply(view);
     mvp.multiply(projection);
-    return mvp;
+    return mvp.multiply(this.framing(mvp.elements));
+  }
+
+  /**
+   * A 2D zoom and pan applied after projection, like cropping a photo: the
+   * 3D view itself is unchanged, but the mesh is fitted to the free area
+   * with its newest edge against the right side.
+   */
+  framing(e) {
+    const size = this.sonogram3DGeometrySize;
+    const edges = this.edgeZ();
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const x of [-size / 2, size / 2]) {
+      for (const y of [0, size / 3.5]) {
+        for (const z of [edges.oldest, edges.newest]) {
+          const p = projectNDC(e, x, y, z);
+          if (!p) continue;
+          // Peaks lean outwards in this view. On the right they must clear
+          // the labels; on the left only the base counts, so reserving room
+          // for peaks doesn't leave the left side empty. Very loud old peaks
+          // may run off the left edge.
+          maxX = Math.max(maxX, p.x);
+          if (y == 0) minX = Math.min(minX, p.x);
+          minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+        }
+      }
+    }
+
+    const f = this.frame;
+    const left = -1 + 2 * f.left, right = 1 - 2 * f.right;
+    const top = 1 - 2 * f.top, bottom = -1 + 2 * f.bottom;
+    let sx = (right - left) / (maxX - minX);
+    let sy = (top - bottom) / (maxY - minY);
+    sx = Math.min(sx, sy * MAX_STRETCH);
+    sy = Math.min(sy, sx * MAX_STRETCH);
+
+    const m = new Matrix4x4();
+    m.elements[0] = sx;
+    m.elements[5] = sy;
+    m.elements[12] = right - sx * maxX;
+    m.elements[13] = (top + bottom) / 2 - sy * (maxY + minY) / 2;
+    return m;
   }
 
   /**
@@ -226,14 +288,10 @@ export default class AnalyserView {
 
     const size = this.sonogram3DGeometrySize;
     const w = this.sonogram3DWidth;
-    const h = this.sonogram3DHeight;
     const x = size * (u * (w - 1) - w / 2) / w;
-    // The last rows of the mesh are not drawn (see sonogram3DNumIndices).
-    const z = size * ((h - 4) - h / 2) / h;
-
-    const e = this.worldViewProjection().elements;
-    const clip = [0, 1, 2, 3].map((j) => x * e[j] + z * e[8 + j] + e[12 + j]);
-    return { x: (clip[0] / clip[3] + 1) / 2, y: (1 - clip[1] / clip[3]) / 2 };
+    const p = projectNDC(this.worldViewProjection().elements, x, 0, this.edgeZ().newest);
+    if (!p) return null;
+    return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
   }
 
   drawGL() {

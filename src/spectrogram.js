@@ -25,6 +25,10 @@ Modified by Howest, 2026:
 import AnalyserView from './visualizer.js';
 
 const LABEL_FREQUENCIES = [200, 500, 1000, 2000, 5000, 10000, 20000];
+const LABEL_FONT = '14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+// Room for the seconds hint above the mesh and a margin on the left.
+const HINT_HEIGHT = 40;
+const LEFT_MARGIN = 12;
 const MAX_PIXEL_RATIO = 2;
 
 const spec3D = {
@@ -34,9 +38,11 @@ const spec3D = {
   lastRow: 0,
   sampleRate: 48000,
 
-  attached(canvas, legend, binCount) {
+  // bottomBar: the overlay at the bottom of the screen the mesh must clear.
+  attached(canvas, legend, bottomBar, binCount) {
     spec3D.canvas = canvas;
     spec3D.legend = legend;
+    spec3D.bottomBar = bottomBar;
     spec3D.analyserView = new AnalyserView(canvas);
     spec3D.analyserView.initByteBuffer(binCount);
     spec3D.onResize_();
@@ -115,9 +121,28 @@ const spec3D = {
       canvas.height = Math.round(height * ratio);
     }
 
+    spec3D.updateFrame_();
     spec3D.drawLegend_();
     // Keep a paused (or not yet started) image visible after a rotation.
     if (!spec3D.isRendering) spec3D.analyserView.drawGL();
+  },
+
+  // Fits the mesh between the seconds hint, the labels and the bottom bar.
+  updateFrame_() {
+    const width = spec3D.cssWidth;
+    const height = spec3D.cssHeight;
+    const ctx = spec3D.legend.getContext('2d');
+    ctx.font = LABEL_FONT;
+    const labelWidth = ctx.measureText('20,000 Hz -').width + 20;
+    const barTop = spec3D.bottomBar.getBoundingClientRect().top;
+    const bottom = Math.max(0, height - barTop) + 8;
+
+    spec3D.analyserView.setFrame({
+      left: LEFT_MARGIN / width,
+      right: labelWidth / width,
+      top: HINT_HEIGHT / height,
+      bottom: bottom / height,
+    });
   },
 
   drawLegend_() {
@@ -132,7 +157,7 @@ const spec3D = {
 
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    ctx.font = '14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.font = LABEL_FONT;
 
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'right';
